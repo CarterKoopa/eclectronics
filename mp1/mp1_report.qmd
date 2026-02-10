@@ -135,7 +135,10 @@ cycle, and are therefore fairly safe to abstract.
 
 ### KiCAD Schematic
 
-All
+The two ICs' circuit symbols were both downloaded from EE Concierge. The USB
+connector was downloaded from Ultra Librarian. Both are included in the repo
+in the `symbols` and `footprints` folder. All other components are from the
+KiCAD standard library with custom manufacture and Digikey part numbers added.
 
 The KiCAD schematic is included below, as described in the various sections
 above:
