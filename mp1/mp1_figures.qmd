@@ -1,0 +1,30 @@
+---
+jupyter: python3
+---
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+```
+
+```{python}
+def parse_csv(filename):
+    spice_data = pd.read_csv(filename)
+    spice_data["digital"] = spice_data["V(n002)"] > 1.65
+    spice_data["digital_change"] = spice_data["digital"].diff()
+    spice_data = spice_data[spice_data["digital_change"] == True].reset_index()
+    spice_data["run_change"] = (spice_data["Run"].diff() != 0)
+    spice_data = spice_data[spice_data["run_change"] == False].reset_index()
+    spice_data["delta_t"] = spice_data["time"].diff()
+    spice_data = spice_data[spice_data["delta_t"] > 0]
+    # print(spice_data)
+    print(f"Max delta T: {round(spice_data['delta_t'].max(), 3)}")
+    print(f"Min delta T: {round(spice_data['delta_t'].min(), 3)}")
+    plt.hist(spice_data["delta_t"], bins = 25)
+    plt.title("Worst-Case Distribution of Flashing Period")
+    plt.xlabel("High Time (half period, s)")
+    plt.ylabel("Number of Occurrences Across Simulations")
+
+parse_csv("mp1_out_1.csv")
+```
+

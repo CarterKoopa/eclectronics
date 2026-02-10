@@ -1,0 +1,170 @@
+---
+title: Eclectronics MP1 Report
+jupyter: python3
+---
+
+
+## Carter Harris
+
+---
+
+
+### Project Overview
+
+Mini-Project 1 for Olin's Eclectronics course involved building a hysteretic
+oscillator using an operational amplifier (op-amp) to flash an LED with a period
+of 1 second, $\pm10\%$.
+
+Specifications dictated that this circuit be powered from a USB-A connector's 5
+volt bus, which is subsequently regulated down to 3.3 volts using a MCP1702
+linear regulator. The op-amp specified is a MCP6022 with two independent op amps
+available; one used for the actual oscillator, and one as a buffer to isolate
+the reference voltage divider. The remaining passive components were selected
+from a provided list of components based on calculated values and tolerances.
+
+The circuit schematic was first designed in KiCAD. Subsequently, the design was
+validated in LTspice with a worst-case tolerance simulation to ensure that the
+specified period tolerance would be met with all selected components. Finally,
+a PCB layout was completed in KiCAD with the goal of minimizing the physical
+footprint of the PCB. Other constraints on the PCB design included 2 layers, all
+components on the top, a minimum of 6 mil traces, and minimum 24 mil vias.
+
+**All supplementary materials and design files are avalible in this repo:**
+[https://github.com/CarterKoopa/eclectronics](https://github.com/CarterKoopa/eclectronics)
+
+
+### Circuit Overview & Component Selection
+
+An overview of the hysteretic oscillator is shown below:
+
+![A hysteretic oscillator built using an op-amp](images/circuit.jpg)
+
+The hysteretic oscillator uses the op-amps theoretical infinite gain to
+generate a square wave. The period of this square wave is dictated by the time
+constant of the RC filter attached to the op-amp's inverting input. A Schmitt
+trigger configuration is connected to the op-amp's non-inverting input.
+
+The result is the output shown by the blue $V_{out}$ curve in the figure below:
+
+![Output curves of a hysteretic oscillator](images/oscillate.png)
+(all figures from *Another Book on Circuits* by Brad Minch)
+
+A typical configuration of this oscillator involves:
+- a voltage $V_{ref}$ which is half that of $V_{dd}$.
+- equal resistors for $R'$
+
+These design choices result in a configuration where $V_{up} = \frac{1}{4}V_{dd}$
+and $V_{dn} = \frac{3}{4}V_{dd}$, which simplifies the selection of other
+components.
+
+Based upon the derivation provided in the above-referenced text, we can
+determine a relationship to describe the time required for voltage $V_n$ to
+charge from $V_{up}$ to $V_{dn}$, the points at which the op-amp switches from
+infinite gain to off. This relationship, described by the time constant $\tau$,
+is equal to the resistance multiplied by the capacitance of the RC filter. This
+relationship is defined as $$V_{up} = V_{dn}e^{\frac{-T_l}{\tau}} $$
+
+where $T_l$ is the low time of the oscillator's period.
+
+Substituting in our values of $V_{up}$ and $V_{dn}$ relative to $V_{dd}$ as
+described above, this equation can be rearranged to solve for the time constant
+$\tau$, such that $$ \tau = \frac{-T_l}{\log\frac{1}{3}}$$
+
+Given our period of 1 second, we want a low time of $T_l = 0.5$. Substituing
+this value results in $\tau = 0.455 $. In the context of our circuit, this means
+that $RC = 0.455$.
+
+To make a first component selection, I chose the $0.1\mu F$ capacitor, as this
+was the largest capacitor available in the X7R standard with a tolerance of
+$\pm 5\%$, rather than the $\pm 10\%$ tolerance provided by all larger 
+capacitors. Later simulation would prove that a 10% tolerance would not meet
+the required 10% tolerance on the duty cycle in a worst-case scenario.
+
+Based upon this capactior value and time constant, we can solve for a resistance
+of $4.55M\Omega$. While this is not a value available within our provided 
+component selection, we can approximate this value quite well by combining in
+series two $2M\Omega$ resistors, one $499k\Omega$, resistor, and one 
+$49.9k\Omega$ resistor to get a series resistance of $4.549M\Omega$.
+
+All other resistors in the circuit, including $R'$, the voltage divider to
+generate $V_{ref}$ from $V_{dd}$, and the current-limiting resistor for the LED
+were selected to be $1k\Omega$ resistors. This satisfies all requirements while
+reducing the number of unique resistors needed.
+
+Other components in the circuit are the MCP1702 linear regulator, who's
+datasheet recommends $1\mu F$ bypass capacitors at the input and output. While
+this acts as a bulk capacitor for the MCP6022's supply, the datasheet for this
+op-amp additionally recommends a small $0.1\mu F$ bypass capacitor within 2mm
+of the supply pin, so this additional capacitor is included.
+
+### LTspice Validation
+This circuit was then validated to LTspice to ensure the design constraints
+related to duty cycle would be met. The LTspice schematic used is shown below:
+
+![LTspice schematic](images/mp1-ltspice-schematic.jpg)
+
+While I originally tried using a SPICE model of the MCP6022 from Microchip, this
+model was designed for pSPICE and did not play nicely with LTspice. As such, I
+used ideal op-amps from the ENGR2420 LTspice library. All other components
+were standard from the LTspice built-in library.
+
+This simulation uses the `wc` and `binary` functions provided in the article
+[LTspice: Worst-Case Circuit Analysis with Minimal Simulations Runs](https://www.analog.com/en/resources/technical-articles/ltspice-worst-case-circuit-analysis-with-minimal-simulations-runs.html) by
+Analog Devices. This code runs $2^N + 1$ simulation runs to test all possible
+combinations of worse-case tolerances (positive and negative) of all components.
+A 5-second transient response is recorded for each run. The first ~1.25 seconds
+of each response is clipped to remove the slightly longer charge-up time of the
+initial charge cycle.
+
+The simulation output, although not entirely useful as a graph, is shown below:
+
+![LTspice worst-case graph](images/worst_case_graph.jpg)
+
+A histogram of the resulting simulation outputs is shown below:
+
+![LTspice worst-case histogram](images/worse_case_histogram.png)
+
+Looking at the raw data (included as mp1_out_1.csv in this repo), the minimum
+high time (ie, half the period) is 0.450 seconds and maximum is 0.541 seconds.
+Although the minimum is bordering on the edge, this shows that the $\pm 10\%$
+duty cycle tolerance is met.
+
+Potential limitations of this test include omitting the linear regulator and
+bypass capacitors, although this shouldn't have a large impact on the final duty
+cycle, and are therefore fairly safe to abstract.
+
+### KiCAD Schematic
+
+All
+
+The KiCAD schematic is included below, as described in the various sections
+above:
+
+![Blinker KiCAD schematic](images/kicad_schematic.jpg)
+
+### KiCAD PCB Layout
+
+The KiCAD layout is included below:
+
+![Blinker KiCAD layout](images/kicad_layout.jpg)
+
+This layout was chosen to minimize the physical footprint, although this was
+partially limited by the size of the USB-A port. All components use a 0603
+package as specified in the allowable components. Both top and bottom layers
+are filled ground planes around the signal traces with stitching vias spread
+around the board. A single 3.3V supply is routed on the bottom layer.
+
+The signal traces are slightly wider than the typical 6 mils at 7.9 mills, or
+0.2mm, as this is the KiCAD default. Power traces are 17 mils to approach the 20
+mil typical width but still fit within the required locations.  
+
+To minimize the footprint, some routing compromises were made. These compromises
+mainly include routing reference and feedback traces under the op-amp IC
+footprint. There is also one feedback signal connection routed under a power
+trace. However, other signal lines are separated as much as possible to given
+the small board size. 
+
+### Bill of Materials
+
+The bill of materials is included in the repo as `blinker_bom.csv`
+
