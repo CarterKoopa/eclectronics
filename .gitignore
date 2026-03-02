@@ -31,10 +31,16 @@ fp-info-cache
 
 # Exported BOM files
 *.xml
-*.csv
+#*.csv
 
 # Archived Backups (KiCad 6.0)
 **/*-backups/*.zip
 
 # Local project settings
 *.kicad_prl
+
+# Mac DS_Store Files
+.DS_Store
+
+# Un-Quarto'd ipynb notebooks
+*.ipynb
